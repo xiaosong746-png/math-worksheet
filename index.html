@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数学口算题生成器</title>
+    <style>
+        /* ========== 基础样式 ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f0f4f8;
+            color: #2d3748;
+            min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* ========== 页面容器 ========== */
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        /* ========== 头部 ========== */
+        .header {
+            text-align: center;
+            padding: 24px 0 16px;
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a365d;
+            letter-spacing: 1px;
+        }
+        .header .subtitle {
+            font-size: 13px;
+            color: #718096;
+            margin-top: 4px;
+        }
+
+        /* ========== 卡片 ========== */
+        .card {
+            background: #fff;
+            border-radius: 14px;
+            padding: 18px;
+            margin-bottom: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .card h2 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .card h2 .icon {
+            font-size: 18px;
+        }
+
+        /* ========== 题型选择 ========== */
+        .type-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .type-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 14px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .type-item:active {
+            transform: scale(0.97);
+        }
+        .type-item.checked {
+            background: #ebf8ff;
+            border-color: #4299e1;
+            color: #2b6cb0;
+        }
+        .type-item input[type="checkbox"] {
+            display: none;
+        }
+        .type-item .check-box {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #cbd5e0;
+            border-radius: 5px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        .type-item.checked .check-box {
+            background: #4299e1;
+            border-color: #4299e1;
+        }
+        .type-item.checked .check-box::after {
+            content: '✓';
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .btn-small {
+            flex: 1;
+            padding: 8px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-outline {
+            background: #fff;
+            border: 1.5px solid #cbd5e0;
+            color: #4a5568;
+        }
+        .btn-outline:active {
+            background: #f7fafc;
+        }
+
+        /* ========== 输入区 ========== */
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .input-group:last-child {
+            margin-bottom: 0;
+        }
+        .input-group label {
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            min-width: 80px;
+            color: #4a5568;
+        }
+        .input-group input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 16px;
+            text-align: center;
+            color: #2d3748;
+            background: #f7fafc;
+            transition: border-color 0.15s;
+            -webkit-appearance: none;
+            outline: none;
+        }
+        .input-group input:focus {
+            border-color: #4299e1;
+            background: #fff;
+        }
+        .input-group .unit {
+            font-size: 14px;
+            color: #718096;
+            white-space: nowrap;
+        }
+
+        /* ========== 生成按钮 ========== */
+        .btn-generate {
+            width: 100%;
+            padding: 15px 0;
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.15s;
+            box-shadow: 0 4px 12px rgba(66,153,225,0.3);
+            margin-top: 4px;
+        }
+        .btn-generate:active {
+            transform: scale(0.97);
+            box-shadow: 0 2px 6px rgba(66,153,225,0.2);
+        }
+        .btn-generate:disabled {
+            background: #cbd5e0;
+            box-shadow: none;
+            transform: none;
+            cursor: not-allowed;
+        }
+
+        /* ========== 错误提示 ========== */
+        .error-msg {
+            color: #e53e3e;
+            font-size: 13px;
+            text-align: center;
+            margin-top: 8px;
+            display: none;
+        }
+
+        /* ========== 使用提示 ========== */
+        .tips {
+            font-size: 12px;
+            color: #a0aec0;
+            text-align: center;
+            margin-top: 16px;
+            line-height: 1.6;
+        }
+
+        /* ========== 题库状态 ========== */
+        .pool-status {
+            font-size: 12px;
+            color: #718096;
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        /* ========== 打印样式 ========== */
+        .print-area {
+            display: none;
+        }
+
+        @media print {
+            html, body {
+                margin: 0;
+                padding: 0;
+                width: 210mm;
+                height: 297mm;
+                overflow: hidden;
+            }
+            body { background: #fff; }
+            .container, .no-print, script, style, .print-area > script {
+                display: none !important;
+            }
+            .print-area {
+                display: block !important;
+                width: 210mm;
+                height: 297mm;
+                padding: 0;
+                margin: 0;
+                overflow: hidden;
+            }
+            .print-page {
+                width: 210mm;
+                height: 297mm;
+                padding: 8mm 12mm;
+                box-sizing: border-box;
+                font-family: "SimSun", "宋体", "NSimSun", "Times New Roman", serif;
+                color: #000;
+                display: flex;
+                flex-direction: column;
+                page-break-after: avoid;
+                page-break-inside: avoid;
+            }
+            .print-page:last-child {
+                page-break-after: avoid;
+            }
+            .print-header {
+                text-align: center;
+                margin-bottom: 3mm;
+                flex-shrink: 0;
+            }
+            .print-header h1 {
+                font-family: "SimHei", "黑体", "SimSun", "宋体", sans-serif;
+                font-size: 16pt;
+                font-weight: 700;
+                margin: 0 0 1.5mm 0;
+                color: #000;
+            }
+            .print-header .info-row {
+                font-size: 10pt;
+                color: #000;
+                display: flex;
+                justify-content: center;
+                gap: 6mm;
+                font-family: "SimSun", "宋体", "NSimSun", serif;
+            }
+            .print-table-wrap {
+                flex: 1 1 0;
+                min-height: 0;
+                display: flex;
+                align-items: stretch;
+            }
+            .print-table {
+                width: 100%;
+                height: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+            }
+            .print-table td {
+                padding: 0;
+                vertical-align: middle;
+                line-height: 1.05;
+                font-family: "SimSun", "宋体", "NSimSun", "Times New Roman", serif;
+                font-weight: normal;
+                color: #000;
+            }
+            .print-table .q-num {
+                color: #000;
+                font-size: 0.9em;
+                margin-right: 0.1em;
+            }
+            @page {
+                size: A4;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ========== 主界面 ========== -->
+    <div class="container">
+        <div class="header">
+            <h1>📐 数学口算题生成器</h1>
+            <p class="subtitle">小学1~6年级 · 一键生成PDF</p>
+        </div>
+
+        <!-- 题型选择 -->
+        <div class="card">
+            <h2><span class="icon">📝</span>选择题目类型</h2>
+            <div class="type-grid" id="typeGrid">
+                <label class="type-item" data-key="add20">
+                    <input type="checkbox">
+                    <span class="check-box"></span>
+                    20以内加法
+                </label>
+                <label class="type-item" data-key="sub20">
+                    <input type="checkbox">
+                    <span class="check-box"></span>
+                    20以内减法
+                </label>
+                <label class="type-item" data-key="add3_20">
+                    <input type="checkbox">
+                    <span class="check-box"></span>
+                    20以内连加
+                </label>
+                <label class="type-item" data-key="sub3_20">
+                    <input type="checkbox">
+                    <span class="check-box"></span>
+                    20以内连减
+                </label>
+                <label class="type-item" data-key="add50">
+                    <input type="checkbox">
+                    <span class="check-box"></span>
+                    50以内加法
+                </label>
+                <label class="type-item" data-key="sub50">
+                    <input type="checkbox">
+                    <span class="check-box"></span>
+                    50以内减法
+                </label>
+                <label class="type-item" data-key="add100">
+                    <input type="checkbox">
+                    <span class="check-box"></span>
+                    100以内加法
+                </label>
+                <label class="type-item" data-key="sub100">
+                    <input type="checkbox">
+                    <span class="check-box"></span>
+                    100以内减法
+                </label>
+                <label class="type-item" data-key="mul">
+                    <input type="checkbox">
+                    <span class="check-box"></span>
+                    两位数×一位数
+                </label>
+                <label class="type-item" data-key="div">
+                    <input type="checkbox">
+                    <span class="check-box"></span>
+                    两位数÷一位数
+                </label>
+            </div>
+            <div class="btn-row">
+                <button class="btn-small btn-outline" id="btnSelectAll">✓ 全选</button>
+                <button class="btn-small btn-outline" id="btnClear">✕ 清空</button>
+            </div>
+        </div>
+
+        <!-- 出题设置 -->
+        <div class="card">
+            <h2><span class="icon">⚙️</span>出题设置</h2>
+            <div class="input-group">
+                <label for="totalQuestions">出题总数</label>
+                <input type="number" id="totalQuestions" value="100" min="1" max="2000" inputmode="numeric">
+                <span class="unit">道</span>
+            </div>
+            <div class="input-group">
+                <label for="perPage">每页题数</label>
+                <input type="number" id="perPage" value="100" min="1" max="100" inputmode="numeric">
+                <span class="unit">道/页</span>
+            </div>
+        </div>
+
+        <!-- 生成按钮 -->
+        <button class="btn-generate" id="btnGenerate">📄 生成PDF</button>
+        <p class="error-msg" id="errorMsg"></p>
+        <p class="pool-status" id="poolStatus"></p>
+
+        <!-- 使用说明 -->
+        <p class="tips">
+            💡 生成后在打印对话框中选择<br>"另存为PDF"即可保存文件<br>
+            推荐使用 <strong>Chrome浏览器</strong> 获得最佳效果
+        </p>
+    </div>
+
+    <!-- ========== 打印区域（隐藏，打印时显示） ========== -->
+    <div class="print-area" id="printArea"></div>
+
+    <script>
+    (function() {
+        // ==================== 题型定义 ====================
+        const TYPE_DEFS = {
+            add20:   { name: '20以内加法',     gen: 'genAdd',     maxResult: 20 },
+            sub20:   { name: '20以内减法',     gen: 'genSub',     maxResult: 20 },
+            add3_20: { name: '20以内连加',     gen: 'genAdd3',    maxResult: 20 },
+            sub3_20: { name: '20以内连减',     gen: 'genSub3',    maxResult: 20 },
+            add50:   { name: '50以内加法',     gen: 'genAdd',     maxResult: 50 },
+            sub50:   { name: '50以内减法',     gen: 'genSub',     maxResult: 50 },
+            add100:  { name: '100以内加法',    gen: 'genAdd',     maxResult: 100 },
+            sub100:  { name: '100以内减法',    gen: 'genSub',     maxResult: 100 },
+            mul:     { name: '两位数×一位数',  gen: 'genMul',     maxResult: null },
+            div:     { name: '两位数÷一位数',  gen: 'genDiv',     maxResult: null },
+        };
+
+        // ==================== 题库管理 ====================
+        const STORAGE_KEY = 'math_worksheet_used';
+        let pools = {};           // {typeKey: [questionObj, ...]}
+        let usedQuestions = {};   // {typeKey: Set of question strings}
+
+        // 题目对象格式: { display: '3 + 5 = ___', key: '3+5' }
+
+        function generateAllQuestions(typeKey) {
+            const def = TYPE_DEFS[typeKey];
+            const questions = [];
+
+            switch (def.gen) {
+                case 'genAdd':
+                    // a + b ≤ maxResult, a,b ≥ 0
+                    for (let a = 0; a <= def.maxResult; a++) {
+                        for (let b = 0; a + b <= def.maxResult; b++) {
+                            questions.push({
+                                display: a + '+' + b + '=',
+                                key: a + '+' + b
+                            });
+                        }
+                    }
+                    break;
+
+                case 'genSub':
+                    // a - b ≥ 0, a ≤ maxResult, b ≥ 0
+                    for (let a = 0; a <= def.maxResult; a++) {
+                        for (let b = 0; b <= a; b++) {
+                            questions.push({
+                                display: a + '-' + b + '=',
+                                key: a + '-' + b
+                            });
+                        }
+                    }
+                    break;
+
+                case 'genAdd3':
+                    // a + b + c ≤ maxResult, a,b,c ≥ 0
+                    for (let a = 0; a <= def.maxResult; a++) {
+                        for (let b = 0; a + b <= def.maxResult; b++) {
+                            for (let c = 0; a + b + c <= def.maxResult; c++) {
+                                questions.push({
+                                    display: a + '+' + b + '+' + c + '=',
+                                    key: a + '+' + b + '+' + c
+                                });
+                            }
+                        }
+                    }
+                    break;
+
+                case 'genSub3':
+                    // a - b - c ≥ 0, a ≤ maxResult, b,c ≥ 0
+                    for (let a = 0; a <= def.maxResult; a++) {
+                        for (let b = 0; b <= a; b++) {
+                            for (let c = 0; b + c <= a; c++) {
+                                questions.push({
+                                    display: a + '-' + b + '-' + c + '=',
+                                    key: a + '-' + b + '-' + c
+                                });
+                            }
+                        }
+                    }
+                    break;
+
+                case 'genMul':
+                    // 两位数(10-99) × 一位数(0-9)
+                    for (let a = 10; a <= 99; a++) {
+                        for (let b = 0; b <= 9; b++) {
+                            questions.push({
+                                display: a + '×' + b + '=',
+                                key: a + '×' + b
+                            });
+                        }
+                    }
+                    // 一位数×两位数
+                    for (let a = 0; a <= 9; a++) {
+                        for (let b = 10; b <= 99; b++) {
+                            questions.push({
+                                display: a + '×' + b + '=',
+                                key: a + '×' + b
+                            });
+                        }
+                    }
+                    break;
+
+                case 'genDiv':
+                    // 两位数÷一位数，能整除
+                    for (let d = 1; d <= 9; d++) {
+                        const qMin = Math.ceil(10 / d);
+                        const qMax = Math.floor(99 / d);
+                        for (let q = qMin; q <= qMax; q++) {
+                            const dividend = d * q;
+                            questions.push({
+                                display: dividend + '÷' + d + '=',
+                                key: dividend + '÷' + d
+                            });
+                        }
+                    }
+                    // 0除以非0一位数
+                    for (let d = 1; d <= 9; d++) {
+                        questions.push({
+                            display: '0÷' + d + '=',
+                            key: '0÷' + d
+                        });
+                    }
+                    break;
+            }
+
+            return questions;
+        }
+
+        function initPools() {
+            for (const key of Object.keys(TYPE_DEFS)) {
+                pools[key] = generateAllQuestions(key);
+                // Fisher-Yates shuffle
+                for (let i = pools[key].length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [pools[key][i], pools[key][j]] = [pools[key][j], pools[key][i]];
+                }
+            }
+            loadUsedQuestions();
+            updatePoolStatus();
+        }
+
+        function loadUsedQuestions() {
+            usedQuestions = {};
+            try {
+                const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+                for (const key of Object.keys(TYPE_DEFS)) {
+                    usedQuestions[key] = new Set(stored[key] || []);
+                }
+            } catch (e) {
+                for (const key of Object.keys(TYPE_DEFS)) {
+                    usedQuestions[key] = new Set();
+                }
+            }
+        }
+
+        function saveUsedQuestions() {
+            const toStore = {};
+            for (const key of Object.keys(TYPE_DEFS)) {
+                toStore[key] = Array.from(usedQuestions[key]);
+            }
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+            } catch (e) {
+                // localStorage full — clear oldest entries
+                for (const key of Object.keys(TYPE_DEFS)) {
+                    const arr = Array.from(usedQuestions[key]);
+                    usedQuestions[key] = new Set(arr.slice(Math.floor(arr.length / 2)));
+                }
+                saveUsedQuestions();
+            }
+        }
+
+        function resetUsedQuestions(types) {
+            types = types || Object.keys(TYPE_DEFS);
+            for (const key of types) {
+                usedQuestions[key] = new Set();
+            }
+            saveUsedQuestions();
+        }
+
+        function getAvailablePool(typeKey) {
+            return pools[typeKey].filter(q => !usedQuestions[typeKey].has(q.key));
+        }
+
+        function updatePoolStatus() {
+            const el = document.getElementById('poolStatus');
+            let totalAvail = 0;
+            for (const key of Object.keys(TYPE_DEFS)) {
+                totalAvail += getAvailablePool(key).length;
+            }
+            el.textContent = '题库可用题目：' + totalAvail.toLocaleString() + ' 道';
+        }
+
+        // ==================== 题目抽取（均匀分配 + 自动重置） ====================
+        function selectQuestions(selectedTypes, totalCount) {
+            // 每个题型平均分配题数
+            const perType = Math.floor(totalCount / selectedTypes.length);
+            const remainder = totalCount % selectedTypes.length;
+
+            let selected = [];
+
+            for (let i = 0; i < selectedTypes.length; i++) {
+                const key = selectedTypes[i];
+                // 前remainder个题型多分一道
+                const need = perType + (i < remainder ? 1 : 0);
+                if (need <= 0) continue;
+
+                let available = getAvailablePool(key);
+
+                // 该题型不够时自动重置
+                if (available.length < need) {
+                    resetUsedQuestions([key]);
+                    // 重新洗牌
+                    for (let k = pools[key].length - 1; k > 0; k--) {
+                        const j = Math.floor(Math.random() * (k + 1));
+                        [pools[key][k], pools[key][j]] = [pools[key][j], pools[key][k]];
+                    }
+                    available = getAvailablePool(key);
+                }
+
+                // 随机抽取需要的数量
+                for (let k = available.length - 1; k > 0; k--) {
+                    const j = Math.floor(Math.random() * (k + 1));
+                    [available[k], available[j]] = [available[j], available[k]];
+                }
+
+                const picked = available.slice(0, Math.min(need, available.length));
+                for (const q of picked) {
+                    usedQuestions[key].add(q.key);
+                    selected.push({ ...q, typeKey: key });
+                }
+            }
+
+            // 最终打乱所有选中题目，让不同题型混合
+            for (let i = selected.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [selected[i], selected[j]] = [selected[j], selected[i]];
+            }
+
+            saveUsedQuestions();
+            updatePoolStatus();
+
+            return selected;
+        }
+
+        // ==================== 布局计算（参考模板：4列固定，宋体） ====================
+        function calculateLayout(count) {
+            const cols = 4;
+            const rows = Math.ceil(count / cols);
+
+            // A4可用高度(保守)：297mm - 20mm(页边距) - 22mm(标题区) - 5mm安全 = 250mm
+            const usableHeight = 250;
+
+            // 每行高度均匀填满页面
+            const rowHeightMM = usableHeight / rows;
+
+            // 字号根据行数匹配参考模板风格
+            let fontSize;
+            if (rows >= 25)      fontSize = 10;
+            else if (rows >= 22) fontSize = 10.5;
+            else if (rows >= 19) fontSize = 11;
+            else if (rows >= 16) fontSize = 12;
+            else if (rows >= 13) fontSize = 14;
+            else if (rows >= 10) fontSize = 16;
+            else                 fontSize = 18;
+
+            return {
+                cols: cols,
+                rows: rows,
+                fontSize: fontSize + 'pt',
+                rowHeightMM: rowHeightMM
+            };
+        }
+
+        // ==================== PDF 生成（通过打印） ====================
+        function generateWorksheet(questions, perPage, selectedTypeNames) {
+            const printArea = document.getElementById('printArea');
+            printArea.innerHTML = '';
+
+            const totalPages = Math.ceil(questions.length / perPage);
+
+            for (let page = 0; page < totalPages; page++) {
+                const pageQuestions = questions.slice(page * perPage, (page + 1) * perPage);
+                const count = pageQuestions.length;
+
+                // 根据本页实际题目数自动计算最佳布局
+                const layout = calculateLayout(count);
+
+                // 题型名称
+                const typeNames = selectedTypeNames.join('·');
+                const pageLabel = totalPages > 1 ? '（' + (page + 1) + '）' : '';
+
+                // 构建页面
+                const pageDiv = document.createElement('div');
+                pageDiv.className = 'print-page';
+                // 多页时非末页加分页符，单页不加
+                if (totalPages > 1 && page < totalPages - 1) {
+                    pageDiv.style.pageBreakAfter = 'always';
+                }
+
+                let html = '<div class="print-header">';
+                html += '<h1>' + typeNames + pageLabel + '</h1>';
+                html += '<div class="info-row">';
+                html += '<span>姓名：__________</span>';
+                html += '<span>日期：__________</span>';
+                html += '<span>用时：__________</span>';
+                html += '<span>得分：__________</span>';
+                html += '</div>';
+                html += '</div>';
+
+                // flex容器包裹表格，让表格自动填满剩余高度
+                html += '<div class="print-table-wrap">';
+                html += '<table class="print-table" style="font-size:' + layout.fontSize + '">';
+
+                let qIndex = 0;
+                for (let r = 0; r < layout.rows; r++) {
+                    html += '<tr>';
+                    for (let c = 0; c < layout.cols; c++) {
+                        if (qIndex < count) {
+                            const qNum = page * perPage + qIndex + 1;
+                            html += '<td><span class="q-num">' + qNum + '.</span>' +
+                                    pageQuestions[qIndex].display + '</td>';
+                            qIndex++;
+                        } else {
+                            html += '<td></td>';
+                        }
+                    }
+                    html += '</tr>';
+                }
+
+                html += '</table>';
+                html += '</div>';
+                pageDiv.innerHTML = html;
+                printArea.appendChild(pageDiv);
+            }
+        }
+
+        // ==================== 按钮事件 ====================
+        function setupUI() {
+            const typeItems = document.querySelectorAll('.type-item');
+            const btnSelectAll = document.getElementById('btnSelectAll');
+            const btnClear = document.getElementById('btnClear');
+            const btnGenerate = document.getElementById('btnGenerate');
+            const errorMsg = document.getElementById('errorMsg');
+
+            // 题型点击切换
+            typeItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const checkbox = this.querySelector('input[type="checkbox"]');
+                    checkbox.checked = !checkbox.checked;
+                    this.classList.toggle('checked', checkbox.checked);
+                    hideError();
+                });
+            });
+
+            // 全选
+            btnSelectAll.addEventListener('click', function() {
+                typeItems.forEach(item => {
+                    item.querySelector('input[type="checkbox"]').checked = true;
+                    item.classList.add('checked');
+                });
+                hideError();
+            });
+
+            // 清空
+            btnClear.addEventListener('click', function() {
+                typeItems.forEach(item => {
+                    item.querySelector('input[type="checkbox"]').checked = false;
+                    item.classList.remove('checked');
+                });
+                hideError();
+            });
+
+            // 生成PDF
+            btnGenerate.addEventListener('click', function() {
+                // 获取选中的题型
+                const selectedTypes = [];
+                typeItems.forEach(item => {
+                    if (item.querySelector('input[type="checkbox"]').checked) {
+                        selectedTypes.push(item.dataset.key);
+                    }
+                });
+
+                if (selectedTypes.length === 0) {
+                    showError('请至少选择一种题目类型');
+                    return;
+                }
+
+                const totalQuestions = parseInt(document.getElementById('totalQuestions').value);
+                const perPage = parseInt(document.getElementById('perPage').value);
+
+                if (isNaN(totalQuestions) || totalQuestions < 1) {
+                    showError('请输入有效的出题总数（至少1道）');
+                    return;
+                }
+                if (totalQuestions > 2000) {
+                    showError('出题总数不能超过2000道');
+                    return;
+                }
+                if (isNaN(perPage) || perPage < 1) {
+                    showError('请输入有效的每页题数（至少1道）');
+                    return;
+                }
+                if (perPage > 100) {
+                    showError('每页题数不能超过100道');
+                    return;
+                }
+
+                hideError();
+                btnGenerate.disabled = true;
+                btnGenerate.textContent = '⏳ 正在生成...';
+
+                // 获取选中题型名称
+                const selectedNames = [];
+                typeItems.forEach(item => {
+                    if (item.querySelector('input[type="checkbox"]').checked) {
+                        selectedNames.push(item.textContent.trim());
+                    }
+                });
+
+                // 延迟执行，让UI更新
+                setTimeout(() => {
+                    try {
+                        const questions = selectQuestions(selectedTypes, totalQuestions);
+                        generateWorksheet(questions, perPage, selectedNames);
+                        window.print();
+                    } catch (err) {
+                        showError('生成失败：' + err.message);
+                        console.error(err);
+                    }
+
+                    btnGenerate.disabled = false;
+                    btnGenerate.textContent = '📄 生成PDF';
+                }, 100);
+            });
+
+            // 输入框变化时隐藏错误
+            document.getElementById('totalQuestions').addEventListener('input', hideError);
+            document.getElementById('perPage').addEventListener('input', hideError);
+
+            function showError(msg) {
+                errorMsg.textContent = msg;
+                errorMsg.style.display = 'block';
+            }
+            function hideError() {
+                errorMsg.style.display = 'none';
+            }
+        }
+
+        // ==================== 题库重置功能 ====================
+        function addResetButton() {
+            // 在设置卡片里添加重置题库的链接
+            const card = document.querySelectorAll('.card')[1];
+            const resetBtn = document.createElement('button');
+            resetBtn.className = 'btn-small btn-outline';
+            resetBtn.textContent = '🔄 重置题库';
+            resetBtn.style.marginTop = '12px';
+            resetBtn.style.width = '100%';
+            resetBtn.addEventListener('click', function() {
+                if (confirm('确定要重置所有题库的使用记录吗？\n重置后，之前出过的题目可能再次出现。')) {
+                    resetUsedQuestions();
+                    updatePoolStatus();
+                    alert('题库已重置！');
+                }
+            });
+            card.appendChild(resetBtn);
+        }
+
+        // ==================== 页面初始化 ====================
+        function init() {
+            initPools();
+            setupUI();
+            addResetButton();
+
+            console.log('✅ 数学口算题生成器已就绪');
+            console.log('📊 题库总量：' + Object.values(pools).reduce((sum, p) => sum + p.length, 0).toLocaleString() + ' 道');
+            for (const [key, pool] of Object.entries(pools)) {
+                console.log('  - ' + TYPE_DEFS[key].name + '：' + pool.length.toLocaleString() + ' 道');
+            }
+        }
+
+        // 启动
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
+    </script>
+</body>
+</html>
