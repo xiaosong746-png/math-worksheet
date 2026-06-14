@@ -885,20 +885,18 @@
                     }
                 });
 
-                // 延迟执行，让UI更新
-                setTimeout(() => {
-                    try {
-                        const questions = selectQuestions(selectedTypes, totalQuestions);
-                        generateWorksheet(questions, perPage, selectedNames);
-                        window.print();
-                    } catch (err) {
-                        showError('生成失败：' + err.message);
-                        console.error(err);
-                    }
+                // 同步生成（不用setTimeout，保持用户手势链）
+                try {
+                    const questions = selectQuestions(selectedTypes, totalQuestions);
+                    generateWorksheet(questions, perPage, selectedNames);
+                    window.print();
+                } catch (err) {
+                    showError('生成失败：' + err.message);
+                    console.error(err);
+                }
 
-                    btnGenerate.disabled = false;
-                    btnGenerate.textContent = '📄 生成PDF';
-                }, 100);
+                btnGenerate.disabled = false;
+                btnGenerate.textContent = '📄 生成PDF';
             });
 
             // 输入框变化时隐藏错误
