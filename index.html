@@ -667,9 +667,8 @@
             el.textContent = '题库可用题目：' + totalAvail.toLocaleString() + ' 道';
         }
 
-        // ==================== 题目抽取（均匀分配 + 自动重置） ====================
+        // ==================== 题目抽取（均匀分配 + 自动循环重置） ====================
         function selectQuestions(selectedTypes, totalCount) {
-            // 每个题型平均分配题数
             const perType = Math.floor(totalCount / selectedTypes.length);
             const remainder = totalCount % selectedTypes.length;
 
@@ -677,37 +676,42 @@
 
             for (let i = 0; i < selectedTypes.length; i++) {
                 const key = selectedTypes[i];
-                // 前remainder个题型多分一道
                 const need = perType + (i < remainder ? 1 : 0);
                 if (need <= 0) continue;
 
-                let available = getAvailablePool(key);
+                let typePicked = [];
 
-                // 该题型不够时自动重置
-                if (available.length < need) {
-                    resetUsedQuestions([key]);
-                    // 重新洗牌
-                    for (let k = pools[key].length - 1; k > 0; k--) {
-                        const j = Math.floor(Math.random() * (k + 1));
-                        [pools[key][k], pools[key][j]] = [pools[key][j], pools[key][k]];
+                while (typePicked.length < need) {
+                    let available = getAvailablePool(key);
+
+                    // 不够时重置该题型题库
+                    if (available.length === 0 || available.length < (need - typePicked.length)) {
+                        resetUsedQuestions([key]);
+                        for (let k = pools[key].length - 1; k > 0; k--) {
+                            const j = Math.floor(Math.random() * (k + 1));
+                            [pools[key][k], pools[key][j]] = [pools[key][j], pools[key][k]];
+                        }
+                        available = getAvailablePool(key);
                     }
-                    available = getAvailablePool(key);
+
+                    // 随机抽取
+                    for (let k = available.length - 1; k > 0; k--) {
+                        const j = Math.floor(Math.random() * (k + 1));
+                        [available[k], available[j]] = [available[j], available[k]];
+                    }
+
+                    const stillNeed = need - typePicked.length;
+                    const batch = available.slice(0, Math.min(stillNeed, available.length));
+                    for (const q of batch) {
+                        usedQuestions[key].add(q.key);
+                        typePicked.push({ ...q, typeKey: key });
+                    }
                 }
 
-                // 随机抽取需要的数量
-                for (let k = available.length - 1; k > 0; k--) {
-                    const j = Math.floor(Math.random() * (k + 1));
-                    [available[k], available[j]] = [available[j], available[k]];
-                }
-
-                const picked = available.slice(0, Math.min(need, available.length));
-                for (const q of picked) {
-                    usedQuestions[key].add(q.key);
-                    selected.push({ ...q, typeKey: key });
-                }
+                selected.push(...typePicked);
             }
 
-            // 最终打乱所有选中题目，让不同题型混合
+            // 最终打乱
             for (let i = selected.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [selected[i], selected[j]] = [selected[j], selected[i]];
@@ -715,7 +719,6 @@
 
             saveUsedQuestions();
             updatePoolStatus();
-
             return selected;
         }
 
