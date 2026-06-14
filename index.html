@@ -733,23 +733,11 @@
         }
 
         // ==================== PDF 生成（通过打印） ====================
-        function generateAndPrint(questions, perPage, selectedTypeNames) {
+        function generateWorksheet(questions, perPage, selectedTypeNames) {
+            const printArea = document.getElementById('printArea');
+            printArea.innerHTML = '';
+
             const totalPages = Math.ceil(questions.length / perPage);
-            let printHTML = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>数学口算练习题</title><style>';
-            printHTML += 'html,body{margin:0;padding:0;background:#fff;}';
-            printHTML += '.print-page{width:210mm;height:297mm;padding:8mm 12mm;box-sizing:border-box;';
-            printHTML += 'font-family:"SimSun","宋体",serif;color:#000;display:flex;flex-direction:column;';
-            printHTML += 'page-break-after:always;}';
-            printHTML += '.print-page:last-child{page-break-after:auto;}';
-            printHTML += '.print-header{text-align:center;margin-bottom:3mm;flex-shrink:0;}';
-            printHTML += '.print-header h1{font-family:"SimHei","黑体",sans-serif;font-size:16pt;font-weight:700;margin:0 0 1.5mm 0;}';
-            printHTML += '.print-header .info-row{font-size:10pt;display:flex;justify-content:center;gap:6mm;}';
-            printHTML += '.print-table-wrap{flex:1 1 0;min-height:0;display:flex;align-items:stretch;}';
-            printHTML += '.print-table{width:100%;height:100%;border-collapse:collapse;table-layout:fixed;}';
-            printHTML += '.print-table td{padding:0;vertical-align:middle;line-height:1.05;font-family:"SimSun",serif;}';
-            printHTML += '.print-table .q-num{font-size:0.9em;margin-right:0.1em;}';
-            printHTML += '@page{size:A4;margin:0;}';
-            printHTML += '</style></head><body>';
 
             for (let page = 0; page < totalPages; page++) {
                 const pageQuestions = questions.slice(page * perPage, (page + 1) * perPage);
@@ -758,47 +746,38 @@
                 const typeNames = selectedTypeNames.join('·');
                 const pageLabel = totalPages > 1 ? '（' + (page + 1) + '）' : '';
 
-                printHTML += '<div class="print-page">';
-                printHTML += '<div class="print-header">';
-                printHTML += '<h1>' + typeNames + pageLabel + '</h1>';
-                printHTML += '<div class="info-row">';
-                printHTML += '<span>姓名：__________</span>';
-                printHTML += '<span>日期：__________</span>';
-                printHTML += '<span>用时：__________</span>';
-                printHTML += '<span>得分：__________</span>';
-                printHTML += '</div></div>';
-                printHTML += '<div class="print-table-wrap">';
-                printHTML += '<table class="print-table" style="font-size:' + layout.fontSize + '">';
+                const pageDiv = document.createElement('div');
+                pageDiv.className = 'print-page';
+                if (totalPages > 1 && page < totalPages - 1) {
+                    pageDiv.style.pageBreakAfter = 'always';
+                }
 
-                let qIndex = 0;
-                for (let r = 0; r < layout.rows; r++) {
-                    printHTML += '<tr>';
+                let html = '<div class="print-header">';
+                html += '<h1>' + typeNames + pageLabel + '</h1>';
+                html += '<div class="info-row">';
+                html += '<span>姓名：__________</span>';
+                html += '<span>日期：__________</span>';
+                html += '<span>用时：__________</span>';
+                html += '<span>得分：__________</span>';
+                html += '</div></div>';
+                html += '<div class="print-table-wrap">';
+                html += '<table class="print-table" style="font-size:' + layout.fontSize + '">';
+
+                for (let r = 0, qi = 0; r < layout.rows; r++) {
+                    html += '<tr>';
                     for (let c = 0; c < layout.cols; c++) {
-                        if (qIndex < count) {
-                            const qNum = qIndex + 1;
-                            printHTML += '<td><span class="q-num">' + qNum + '.</span>' + pageQuestions[qIndex].display + '</td>';
-                            qIndex++;
+                        if (qi < count) {
+                            html += '<td><span class="q-num">' + (qi + 1) + '.</span>' + pageQuestions[qi].display + '</td>';
+                            qi++;
                         } else {
-                            printHTML += '<td></td>';
+                            html += '<td></td>';
                         }
                     }
-                    printHTML += '</tr>';
+                    html += '</tr>';
                 }
-                printHTML += '</table></div></div>';
-            }
-
-            printHTML += '<script>window.onload=function(){window.print();};<\/script></body></html>';
-
-            // 打开新窗口并写入内容，触发打印
-            const printWindow = window.open('', '_blank', 'width=800,height=600');
-            if (printWindow) {
-                printWindow.document.write(printHTML);
-                printWindow.document.close();
-            } else {
-                // 弹窗被拦截时，回退到当前页面打印
-                const printArea = document.getElementById('printArea');
-                printArea.innerHTML = printHTML.replace(/<script>.*?<\/script>/g, '');
-                window.print();
+                html += '</table></div>';
+                pageDiv.innerHTML = html;
+                printArea.appendChild(pageDiv);
             }
         }
 
@@ -895,7 +874,8 @@
                 // 同步生成（不用setTimeout，保持用户手势链）
                 try {
                     const questions = selectQuestions(selectedTypes, totalQuestions);
-                    generateAndPrint(questions, perPage, selectedNames);
+                    generateWorksheet(questions, perPage, selectedNames);
+                    window.print();
                 } catch (err) {
                     showError('生成失败：' + err.message);
                     console.error(err);
