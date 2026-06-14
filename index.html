@@ -247,21 +247,15 @@
             html, body {
                 margin: 0;
                 padding: 0;
-                width: 210mm;
-                height: 297mm;
-                overflow: hidden;
             }
             body { background: #fff; }
-            .container, .no-print, script, style, .print-area > script {
+            .container, .no-print, script, style {
                 display: none !important;
             }
             .print-area {
                 display: block !important;
-                width: 210mm;
-                height: 297mm;
                 padding: 0;
                 margin: 0;
-                overflow: hidden;
             }
             .print-page {
                 width: 210mm;
@@ -404,9 +398,9 @@
         <div class="card">
             <h2><span class="icon">⚙️</span>出题设置</h2>
             <div class="input-group">
-                <label for="totalQuestions">出题总数</label>
-                <input type="number" id="totalQuestions" value="100" min="1" max="2000" inputmode="numeric">
-                <span class="unit">道</span>
+                <label for="totalPages">出题页数</label>
+                <input type="number" id="totalPages" value="1" min="1" max="50" inputmode="numeric">
+                <span class="unit">页</span>
             </div>
             <div class="input-group">
                 <label for="perPage">每页题数</label>
@@ -818,15 +812,15 @@
                     return;
                 }
 
-                const totalQuestions = parseInt(document.getElementById('totalQuestions').value);
+                const totalPagesInput = parseInt(document.getElementById('totalPages').value);
                 const perPage = parseInt(document.getElementById('perPage').value);
 
-                if (isNaN(totalQuestions) || totalQuestions < 1) {
-                    showError('请输入有效的出题总数（至少1道）');
+                if (isNaN(totalPagesInput) || totalPagesInput < 1) {
+                    showError('请输入有效的出题页数（至少1页）');
                     return;
                 }
-                if (totalQuestions > 2000) {
-                    showError('出题总数不能超过2000道');
+                if (totalPagesInput > 50) {
+                    showError('出题页数不能超过50页');
                     return;
                 }
                 if (isNaN(perPage) || perPage < 1) {
@@ -835,6 +829,12 @@
                 }
                 if (perPage > 100) {
                     showError('每页题数不能超过100道');
+                    return;
+                }
+
+                const totalQuestions = totalPagesInput * perPage;
+                if (totalQuestions > 5000) {
+                    showError('总题数不能超过5000道（最多50页×100道）');
                     return;
                 }
 
@@ -867,7 +867,7 @@
             });
 
             // 输入框变化时隐藏错误
-            document.getElementById('totalQuestions').addEventListener('input', hideError);
+            document.getElementById('totalPages').addEventListener('input', hideError);
             document.getElementById('perPage').addEventListener('input', hideError);
 
             function showError(msg) {
