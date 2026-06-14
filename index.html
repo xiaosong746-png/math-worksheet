@@ -875,7 +875,17 @@
                 try {
                     const questions = selectQuestions(selectedTypes, totalQuestions);
                     generateWorksheet(questions, perPage, selectedNames);
+
+                    // 设置PDF文件名：题型_日期
+                    const today = new Date();
+                    const dateStr = today.getFullYear() + '-' +
+                        String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                        String(today.getDate()).padStart(2, '0');
+                    const oldTitle = document.title;
+                    document.title = '数学口算题_' + dateStr;
                     window.print();
+                    // 打印完成后恢复原标题
+                    setTimeout(function() { document.title = oldTitle; }, 500);
                 } catch (err) {
                     showError('生成失败：' + err.message);
                     console.error(err);
