@@ -347,6 +347,16 @@
                     <span class="check-box"></span>
                     20以内减法
                 </label>
+                <label class="type-item" data-key="carry20">
+                    <input type="checkbox">
+                    <span class="check-box"></span>
+                    20以内进位加法
+                </label>
+                <label class="type-item" data-key="borrow20">
+                    <input type="checkbox">
+                    <span class="check-box"></span>
+                    20以内退位减法
+                </label>
                 <label class="type-item" data-key="add3_20">
                     <input type="checkbox">
                     <span class="check-box"></span>
@@ -428,16 +438,18 @@
     (function() {
         // ==================== 题型定义 ====================
         const TYPE_DEFS = {
-            add20:   { name: '20以内加法',     gen: 'genAdd',     maxResult: 20 },
-            sub20:   { name: '20以内减法',     gen: 'genSub',     maxResult: 20 },
-            add3_20: { name: '20以内连加',     gen: 'genAdd3',    maxResult: 20 },
-            sub3_20: { name: '20以内连减',     gen: 'genSub3',    maxResult: 20 },
-            add50:   { name: '50以内加法',     gen: 'genAdd',     maxResult: 50 },
-            sub50:   { name: '50以内减法',     gen: 'genSub',     maxResult: 50 },
-            add100:  { name: '100以内加法',    gen: 'genAdd',     maxResult: 100 },
-            sub100:  { name: '100以内减法',    gen: 'genSub',     maxResult: 100 },
-            mul:     { name: '两位数×一位数',  gen: 'genMul',     maxResult: null },
-            div:     { name: '两位数÷一位数',  gen: 'genDiv',     maxResult: null },
+            add20:   { name: '20以内加法',         gen: 'genAdd',     maxResult: 20 },
+            sub20:   { name: '20以内减法',         gen: 'genSub',     maxResult: 20 },
+            carry20: { name: '20以内进位加法',     gen: 'genCarryAdd', maxResult: 20 },
+            borrow20:{ name: '20以内退位减法',     gen: 'genBorrowSub', maxResult: 20 },
+            add3_20: { name: '20以内连加',         gen: 'genAdd3',    maxResult: 20 },
+            sub3_20: { name: '20以内连减',         gen: 'genSub3',    maxResult: 20 },
+            add50:   { name: '50以内加法',         gen: 'genAdd',     maxResult: 50 },
+            sub50:   { name: '50以内减法',         gen: 'genSub',     maxResult: 50 },
+            add100:  { name: '100以内加法',        gen: 'genAdd',     maxResult: 100 },
+            sub100:  { name: '100以内减法',        gen: 'genSub',     maxResult: 100 },
+            mul:     { name: '两位数×一位数',      gen: 'genMul',     maxResult: null },
+            div:     { name: '两位数÷一位数',      gen: 'genDiv',     maxResult: null },
         };
 
         // ==================== 题库管理 ====================
@@ -538,12 +550,39 @@
                             });
                         }
                     }
-                    // 0除以非0一位数
                     for (let d = 1; d <= 9; d++) {
                         questions.push({
                             display: '0÷' + d + '=',
                             key: '0÷' + d
                         });
+                    }
+                    break;
+
+                case 'genCarryAdd':
+                    // 20以内进位加法：a+b≤20 且 个位相加≥10（需要进位）
+                    for (let a = 0; a <= def.maxResult; a++) {
+                        for (let b = 0; a + b <= def.maxResult; b++) {
+                            if ((a % 10) + (b % 10) >= 10) {
+                                questions.push({
+                                    display: a + '+' + b + '=',
+                                    key: a + '+' + b
+                                });
+                            }
+                        }
+                    }
+                    break;
+
+                case 'genBorrowSub':
+                    // 20以内退位减法：a≤20, a≥10 且 个位不够减（需要借位）
+                    for (let a = 10; a <= def.maxResult; a++) {
+                        for (let b = 0; b <= a; b++) {
+                            if ((a % 10) < (b % 10)) {
+                                questions.push({
+                                    display: a + '-' + b + '=',
+                                    key: a + '-' + b
+                                });
+                            }
+                        }
                     }
                     break;
             }
