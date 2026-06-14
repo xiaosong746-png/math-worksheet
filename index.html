@@ -387,6 +387,16 @@
                     <span class="check-box"></span>
                     100以内减法
                 </label>
+                <label class="type-item" data-key="carry100">
+                    <input type="checkbox">
+                    <span class="check-box"></span>
+                    100以内进位加法
+                </label>
+                <label class="type-item" data-key="borrow100">
+                    <input type="checkbox">
+                    <span class="check-box"></span>
+                    100以内退位减法
+                </label>
                 <label class="type-item" data-key="mul">
                     <input type="checkbox">
                     <span class="check-box"></span>
@@ -448,6 +458,8 @@
             sub50:   { name: '50以内减法',         gen: 'genSub',     maxResult: 50 },
             add100:  { name: '100以内加法',        gen: 'genAdd',     maxResult: 100 },
             sub100:  { name: '100以内减法',        gen: 'genSub',     maxResult: 100 },
+            carry100:{ name: '100以内进位加法',    gen: 'genCarryAdd', maxResult: 100 },
+            borrow100:{name: '100以内退位减法',    gen: 'genBorrowSub', maxResult: 100 },
             mul:     { name: '两位数×一位数',      gen: 'genMul',     maxResult: null },
             div:     { name: '两位数÷一位数',      gen: 'genDiv',     maxResult: null },
         };
