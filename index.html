@@ -793,7 +793,7 @@
                     html += '<tr>';
                     for (let c = 0; c < layout.cols; c++) {
                         if (qIndex < count) {
-                            const qNum = page * perPage + qIndex + 1;
+                            const qNum = qIndex + 1;
                             html += '<td><span class="q-num">' + qNum + '.</span>' +
                                     pageQuestions[qIndex].display + '</td>';
                             qIndex++;
