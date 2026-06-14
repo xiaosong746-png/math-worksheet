@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>数学口算题生成器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
         /* ========== 基础样式 ========== */
         * {
@@ -231,89 +233,65 @@
             line-height: 1.6;
         }
 
-        /* ========== 打印样式 ========== */
+        /* ========== 打印区域样式（html2canvas渲染用） ========== */
         .print-area {
             display: none;
         }
-
-        @media print {
-            html, body {
-                margin: 0;
-                padding: 0;
-            }
-            body { background: #fff; }
-            .container, .no-print, script, style {
-                display: none !important;
-            }
-            .print-area {
-                display: block !important;
-                padding: 0;
-                margin: 0;
-            }
-            .print-page {
-                width: 210mm;
-                height: 297mm;
-                padding: 8mm 12mm;
-                box-sizing: border-box;
-                font-family: "SimSun", "宋体", "NSimSun", "Times New Roman", serif;
-                color: #000;
-                display: flex;
-                flex-direction: column;
-                page-break-after: avoid;
-                page-break-inside: avoid;
-            }
-            .print-page:last-child {
-                page-break-after: avoid;
-            }
-            .print-header {
-                text-align: center;
-                margin-bottom: 3mm;
-                flex-shrink: 0;
-            }
-            .print-header h1 {
-                font-family: "SimHei", "黑体", "SimSun", "宋体", sans-serif;
-                font-size: 16pt;
-                font-weight: 700;
-                margin: 0 0 1.5mm 0;
-                color: #000;
-            }
-            .print-header .info-row {
-                font-size: 10pt;
-                color: #000;
-                display: flex;
-                justify-content: center;
-                gap: 6mm;
-                font-family: "SimSun", "宋体", "NSimSun", serif;
-            }
-            .print-table-wrap {
-                flex: 1 1 0;
-                min-height: 0;
-                display: flex;
-                align-items: stretch;
-            }
-            .print-table {
-                width: 100%;
-                height: 100%;
-                border-collapse: collapse;
-                table-layout: fixed;
-            }
-            .print-table td {
-                padding: 0;
-                vertical-align: middle;
-                line-height: 1.05;
-                font-family: "SimSun", "宋体", "NSimSun", "Times New Roman", serif;
-                font-weight: normal;
-                color: #000;
-            }
-            .print-table .q-num {
-                color: #000;
-                font-size: 0.9em;
-                margin-right: 0.1em;
-            }
-            @page {
-                size: A4;
-                margin: 0;
-            }
+        .print-area .print-page {
+            width: 210mm;
+            height: 297mm;
+            padding: 8mm 12mm;
+            box-sizing: border-box;
+            font-family: "SimSun", "宋体", "NSimSun", "Times New Roman", serif;
+            color: #000;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+        }
+        .print-area .print-header {
+            text-align: center;
+            margin-bottom: 3mm;
+            flex-shrink: 0;
+        }
+        .print-area .print-header h1 {
+            font-family: "SimHei", "黑体", "SimSun", "宋体", sans-serif;
+            font-size: 16pt;
+            font-weight: 700;
+            margin: 0 0 1.5mm 0;
+            color: #000;
+        }
+        .print-area .print-header .info-row {
+            font-size: 10pt;
+            color: #000;
+            display: flex;
+            justify-content: center;
+            gap: 6mm;
+            font-family: "SimSun", "宋体", "NSimSun", serif;
+        }
+        .print-area .print-table-wrap {
+            flex: 1 1 0;
+            min-height: 0;
+            display: flex;
+            align-items: stretch;
+        }
+        .print-area .print-table {
+            width: 100%;
+            height: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .print-area .print-table td {
+            padding: 0;
+            vertical-align: middle;
+            line-height: 1.05;
+            font-family: "SimSun", "宋体", "NSimSun", "Times New Roman", serif;
+            font-weight: normal;
+            color: #000;
+        }
+        .print-area .print-table .q-num {
+            color: #000;
+            font-size: 0.9em;
+            margin-right: 0.1em;
         }
     </style>
 </head>
@@ -871,28 +849,55 @@
                     }
                 });
 
-                // 同步生成（不用setTimeout，保持用户手势链）
+                // 同步生成
                 try {
                     const questions = selectQuestions(selectedTypes, totalQuestions);
                     generateWorksheet(questions, perPage, selectedNames);
 
-                    // 设置PDF文件名：题型_日期
-                    const today = new Date();
-                    const dateStr = today.getFullYear() + '-' +
-                        String(today.getMonth() + 1).padStart(2, '0') + '-' +
-                        String(today.getDate()).padStart(2, '0');
-                    const oldTitle = document.title;
-                    document.title = '数学口算题_' + dateStr;
-                    window.print();
-                    // 打印完成后恢复原标题
-                    setTimeout(function() { document.title = oldTitle; }, 500);
+                    // 用html2canvas+jsPDF生成PDF并下载
+                    setTimeout(async function() {
+                        const printArea = document.getElementById('printArea');
+                        printArea.style.display = 'block';
+                        printArea.style.position = 'absolute';
+                        printArea.style.left = '-9999px';
+                        printArea.style.top = '0';
+                        printArea.style.zIndex = '-1';
+
+                        const { jsPDF } = window.jspdf;
+                        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                        const pages = printArea.querySelectorAll('.print-page');
+
+                        for (let i = 0; i < pages.length; i++) {
+                            if (i > 0) doc.addPage();
+                            const canvas = await html2canvas(pages[i], {
+                                scale: 2,
+                                useCORS: true,
+                                backgroundColor: '#ffffff'
+                            });
+                            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                            doc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+                        }
+
+                        const today = new Date();
+                        const dateStr = today.getFullYear() + '-' +
+                            String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                            String(today.getDate()).padStart(2, '0');
+                        doc.save('数学口算题_' + dateStr + '.pdf');
+
+                        printArea.style.display = 'none';
+                        printArea.style.position = '';
+                        printArea.style.left = '';
+                        printArea.style.zIndex = '';
+
+                        btnGenerate.disabled = false;
+                        btnGenerate.textContent = '📄 生成PDF';
+                    });
                 } catch (err) {
                     showError('生成失败：' + err.message);
                     console.error(err);
+                    btnGenerate.disabled = false;
+                    btnGenerate.textContent = '📄 生成PDF';
                 }
-
-                btnGenerate.disabled = false;
-                btnGenerate.textContent = '📄 生成PDF';
             });
 
             // 输入框变化时隐藏错误
