@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>数学口算题生成器</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
         /* ========== 基础样式 ========== */
         * {
@@ -281,7 +279,7 @@
             border-collapse: collapse;
         }
         .print-area .print-table td {
-            padding: 0 9mm 0 0;
+            padding: 0 12mm 0 0;
             vertical-align: middle;
             text-align: left;
             line-height: 1.1;
@@ -296,8 +294,32 @@
             color: #000;
             font-size: 1em;
             display: inline-block;
-            width: 2.5em;
-            text-align: left;
+            text-align: right;
+        }
+
+        /* ========== 打印样式（原生打印用） ========== */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .print-area, .print-area * {
+                visibility: visible;
+            }
+            .print-area {
+                position: static !important;
+                display: block !important;
+                left: auto !important;
+                top: auto !important;
+                z-index: auto !important;
+            }
+            .print-page {
+                page-break-after: always;
+                box-shadow: none !important;
+                margin: 0 !important;
+            }
+            .print-page:last-child {
+                page-break-after: auto;
+            }
         }
     </style>
 </head>
@@ -753,7 +775,10 @@
                         // 列优先填充：序号沿每列自上而下递增（竖排）
                         const qi = c * layout.rows + r;
                         if (qi < count) {
-                            html += '<td><span class="q-num">' + (qi + 1) + '、</span>' + pageQuestions[qi].display + '</td>';
+                            // 按列设序号框宽度：col1-3最大两位数→2em，col4最大三位数→2.5em；右对齐使顿号紧贴算式
+                            const colMax = Math.min((c + 1) * layout.rows, count);
+                            const w = String(colMax).length === 3 ? '2.5em' : '2em';
+                            html += '<td><span class="q-num" style="width:' + w + '">' + (qi + 1) + '、</span>' + pageQuestions[qi].display + '</td>';
                         } else {
                             html += '<td></td>';
                         }
@@ -861,44 +886,28 @@
                     const questions = selectQuestions(selectedTypes, totalQuestions);
                     generateWorksheet(questions, perPage, selectedNames);
 
-                    // 用html2canvas+jsPDF生成PDF并下载
-                    setTimeout(async function() {
-                        const printArea = document.getElementById('printArea');
-                        printArea.style.display = 'block';
-                        printArea.style.position = 'absolute';
-                        printArea.style.left = '-9999px';
-                        printArea.style.top = '0';
-                        printArea.style.zIndex = '-1';
+                    // 原生打印：显示打印区 → 打开打印对话框 → 用户选"另存为PDF"
+                    const printArea = document.getElementById('printArea');
+                    printArea.style.display = 'block';
+                    printArea.style.position = 'static';
 
-                        const { jsPDF } = window.jspdf;
-                        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-                        const pages = printArea.querySelectorAll('.print-page');
-
-                        for (let i = 0; i < pages.length; i++) {
-                            if (i > 0) doc.addPage();
-                            const canvas = await html2canvas(pages[i], {
-                                scale: 2,
-                                useCORS: true,
-                                backgroundColor: '#ffffff'
-                            });
-                            const imgData = canvas.toDataURL('image/jpeg', 0.95);
-                            doc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
-                        }
-
-                        const today = new Date();
-                        const dateStr = today.getFullYear() + '-' +
-                            String(today.getMonth() + 1).padStart(2, '0') + '-' +
-                            String(today.getDate()).padStart(2, '0');
-                        doc.save('数学口算题_' + dateStr + '.pdf');
-
+                    // 打印完成后恢复界面
+                    const afterPrint = function() {
                         printArea.style.display = 'none';
                         printArea.style.position = '';
-                        printArea.style.left = '';
-                        printArea.style.zIndex = '';
-
                         btnGenerate.disabled = false;
                         btnGenerate.textContent = '📄 生成PDF';
-                    });
+                        window.removeEventListener('afterprint', afterPrint);
+                    };
+                    window.addEventListener('afterprint', afterPrint);
+                    // 备用：部分浏览器不支持 afterprint，延迟恢复
+                    setTimeout(function() {
+                        if (printArea.style.display !== 'none') {
+                            afterPrint();
+                        }
+                    }, 3000);
+                    window.print();
+
                 } catch (err) {
                     showError('生成失败：' + err.message);
                     console.error(err);
