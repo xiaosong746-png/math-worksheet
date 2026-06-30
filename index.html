@@ -299,26 +299,15 @@
 
         /* ========== 打印样式（原生打印用） ========== */
         @media print {
-            body * {
-                visibility: hidden;
-            }
-            .print-area, .print-area * {
-                visibility: visible;
+            body > :not(.print-area) {
+                display: none;
             }
             .print-area {
-                position: static !important;
                 display: block !important;
-                left: auto !important;
-                top: auto !important;
-                z-index: auto !important;
+                position: static !important;
             }
-            .print-page {
+            .print-page:not(:last-child) {
                 page-break-after: always;
-                box-shadow: none !important;
-                margin: 0 !important;
-            }
-            .print-page:last-child {
-                page-break-after: auto;
             }
         }
     </style>
@@ -434,8 +423,9 @@
 
         <!-- 使用说明 -->
         <p class="tips">
-            💡 生成后在打印对话框中选择<br>"另存为PDF"即可保存文件<br>
-            推荐使用 <strong>Chrome浏览器</strong> 获得最佳效果
+            💡 点「生成PDF」→ 打印对话框 → 选<strong>"另存为PDF"</strong>保存<br>
+            📄 文件名自动设为 <strong>"日期+口算题"</strong>（如 2026-07-01口算题）<br>
+            📐 每页标准 <strong>100道题</strong>，A4纸打印刚好一页
         </p>
     </div>
 
@@ -775,10 +765,7 @@
                         // 列优先填充：序号沿每列自上而下递增（竖排）
                         const qi = c * layout.rows + r;
                         if (qi < count) {
-                            // 按列设序号框宽度：col1-3最大两位数→2em，col4最大三位数→2.5em；右对齐使顿号紧贴算式
-                            const colMax = Math.min((c + 1) * layout.rows, count);
-                            const w = String(colMax).length === 3 ? '2.5em' : '2em';
-                            html += '<td><span class="q-num" style="width:' + w + '">' + (qi + 1) + '、</span>' + pageQuestions[qi].display + '</td>';
+                            html += '<td>' + (qi + 1) + '、' + pageQuestions[qi].display + '</td>';
                         } else {
                             html += '<td></td>';
                         }
@@ -891,10 +878,19 @@
                     printArea.style.display = 'block';
                     printArea.style.position = 'static';
 
-                    // 打印完成后恢复界面
+                    // 设置文件名提示（打印对话框"另存为PDF"的默认名）
+                    const today = new Date();
+                    const dateStr = today.getFullYear() + '-' +
+                        String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                        String(today.getDate()).padStart(2, '0');
+                    const origTitle = document.title;
+                    document.title = dateStr + '口算题';
+
+                    // 打印完成后恢复界面和标题
                     const afterPrint = function() {
                         printArea.style.display = 'none';
                         printArea.style.position = '';
+                        document.title = origTitle;
                         btnGenerate.disabled = false;
                         btnGenerate.textContent = '📄 生成PDF';
                         window.removeEventListener('afterprint', afterPrint);
