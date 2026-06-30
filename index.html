@@ -884,7 +884,7 @@
                         String(today.getMonth() + 1).padStart(2, '0') + '-' +
                         String(today.getDate()).padStart(2, '0');
                     const origTitle = document.title;
-                    document.title = dateStr + ' ' + selectedNames.join(' ') + ' 口算题';
+                    document.title = dateStr + ' ' + selectedNames.join(' ');
 
                     // 打印完成后恢复界面和标题
                     const afterPrint = function() {
