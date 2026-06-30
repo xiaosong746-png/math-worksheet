@@ -240,7 +240,7 @@
         .print-area .print-page {
             width: 210mm;
             height: 297mm;
-            padding: 8mm 12mm;
+            padding: 8mm 10mm;
             box-sizing: border-box;
             font-family: "SimSun", "宋体", "NSimSun", "Times New Roman", serif;
             color: #000;
@@ -283,15 +283,16 @@
         .print-area .print-table td {
             padding: 0;
             vertical-align: middle;
-            line-height: 1.05;
+            text-align: center;
+            line-height: 1.1;
             font-family: "SimSun", "宋体", "NSimSun", "Times New Roman", serif;
-            font-weight: normal;
+            font-weight: bold;
             color: #000;
         }
         .print-area .print-table .q-num {
             color: #000;
-            font-size: 0.9em;
-            margin-right: 0.1em;
+            font-size: 0.92em;
+            margin-right: 0.2em;
         }
     </style>
 </head>
@@ -692,15 +693,15 @@
             // 每行高度均匀填满页面
             const rowHeightMM = usableHeight / rows;
 
-            // 字号根据行数匹配参考模板风格
+            // 字号根据行数匹配参考模板风格（加粗黑字，偏大；已按横向列宽验算不溢出）
             let fontSize;
-            if (rows >= 25)      fontSize = 10;
-            else if (rows >= 22) fontSize = 10.5;
-            else if (rows >= 19) fontSize = 11;
-            else if (rows >= 16) fontSize = 12;
-            else if (rows >= 13) fontSize = 14;
-            else if (rows >= 10) fontSize = 16;
-            else                 fontSize = 18;
+            if (rows >= 24)      fontSize = 20;
+            else if (rows >= 20) fontSize = 21;
+            else if (rows >= 17) fontSize = 22;
+            else if (rows >= 14) fontSize = 22;
+            else if (rows >= 11) fontSize = 22;
+            else if (rows >= 8)  fontSize = 22;
+            else                 fontSize = 22;
 
             return {
                 cols: cols,
@@ -741,12 +742,13 @@
                 html += '<div class="print-table-wrap">';
                 html += '<table class="print-table" style="font-size:' + layout.fontSize + '">';
 
-                for (let r = 0, qi = 0; r < layout.rows; r++) {
+                for (let r = 0; r < layout.rows; r++) {
                     html += '<tr>';
                     for (let c = 0; c < layout.cols; c++) {
+                        // 列优先填充：序号沿每列自上而下递增（竖排）
+                        const qi = c * layout.rows + r;
                         if (qi < count) {
-                            html += '<td><span class="q-num">' + (qi + 1) + '.</span>' + pageQuestions[qi].display + '</td>';
-                            qi++;
+                            html += '<td><span class="q-num">' + (qi + 1) + '、</span>' + pageQuestions[qi].display + '</td>';
                         } else {
                             html += '<td></td>';
                         }
