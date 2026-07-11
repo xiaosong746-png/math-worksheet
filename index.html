@@ -1031,12 +1031,17 @@
                         String(today.getDate()).padStart(2, '0');
                     const origTitle = document.title;
                     document.title = dateStr + '口算题';
+                    // Safari 打印 PDF 用 <title> 标签内容，需同步修改
+                    const titleEl = document.querySelector('title');
+                    const origTitleText = titleEl.textContent;
+                    titleEl.textContent = dateStr + '口算题';
 
                     // 打印完成后恢复界面和标题
                     const afterPrint = function() {
                         printArea.style.display = 'none';
                         printArea.style.position = '';
                         document.title = origTitle;
+                        titleEl.textContent = origTitleText;
                         btnGenerate.disabled = false;
                         btnGenerate.textContent = '📄 生成PDF';
                         window.removeEventListener('afterprint', afterPrint);
