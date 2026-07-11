@@ -1019,45 +1019,65 @@
                     const questions = selectQuestions(selectedTypes, totalQuestions);
                     generateWorksheet(questions, perPage, selectedTypes, selectedNames);
 
-                    // 原生打印：显示打印区 → 改标题 → 打开打印对话框 → 用户选"另存为PDF"
                     const printArea = document.getElementById('printArea');
-                    printArea.style.display = 'block';
-                    printArea.style.position = 'static';
-
-                    // 设置文件名（日期+口算题）：改 document.title 和 <title> 双保险
                     const today = new Date();
                     const dateStr = today.getFullYear() + '-' +
                         String(today.getMonth() + 1).padStart(2, '0') + '-' +
                         String(today.getDate()).padStart(2, '0');
                     const newTitle = dateStr + '口算题';
-                    const origTitle = document.title;
-                    const titleEl = document.querySelector('title');
-                    const origTitleText = titleEl.textContent;
-                    document.title = newTitle;
-                    titleEl.textContent = newTitle;
 
-                    // 打印完成后恢复界面和标题
-                    const afterPrint = function() {
-                        printArea.style.display = 'none';
-                        printArea.style.position = '';
-                        document.title = origTitle;
-                        titleEl.textContent = origTitleText;
+                    // 收集所有样式
+                    let stylesHTML = '';
+                    document.querySelectorAll('style').forEach(s => stylesHTML += s.outerHTML);
+
+                    // 构建完整打印文档（新文档自带正确标题，确保PDF文件名正确）
+                    const printDoc = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>${newTitle}</title>
+${stylesHTML}
+</head>
+<body style="margin:0;padding:0;">
+${printArea.innerHTML}
+<script>
+window.onload = function() {
+    window.print();
+};
+<\/script>
+</body>
+</html>`;
+
+                    const blob = new Blob([printDoc], { type: 'text/html' });
+                    const blobUrl = URL.createObjectURL(blob);
+
+                    // 新窗口打开 → 自带正确标题 → 自动弹出打印
+                    const printWin = window.open(blobUrl, '_blank');
+
+                    if (printWin) {
+                        // 打印完成后清理
+                        const checkClose = setInterval(function() {
+                            if (printWin.closed) {
+                                clearInterval(checkClose);
+                                URL.revokeObjectURL(blobUrl);
+                                btnGenerate.disabled = false;
+                                btnGenerate.textContent = '📄 生成PDF';
+                            }
+                        }, 500);
+                        // 超时保护（30秒后强制恢复）
+                        setTimeout(function() {
+                            clearInterval(checkClose);
+                            try { URL.revokeObjectURL(blobUrl); } catch(e) {}
+                            btnGenerate.disabled = false;
+                            btnGenerate.textContent = '📄 生成PDF';
+                        }, 30000);
+                    } else {
+                        // 弹窗被拦截，退回老方案
+                        alert('请允许弹出窗口，或手动点击浏览器菜单"打印"');
+                        URL.revokeObjectURL(blobUrl);
                         btnGenerate.disabled = false;
                         btnGenerate.textContent = '📄 生成PDF';
-                        window.removeEventListener('afterprint', afterPrint);
-                    };
-                    window.addEventListener('afterprint', afterPrint);
-
-                    // 延迟打印：给浏览器一个渲染帧处理标题变更（Android Chrome 需要）
-                    setTimeout(function() {
-                        window.print();
-                        // 备用恢复：部分浏览器不支持 afterprint
-                        setTimeout(function() {
-                            if (printArea.style.display !== 'none') {
-                                afterPrint();
-                            }
-                        }, 3000);
-                    }, 150);
+                    }
 
                 } catch (err) {
                     showError('生成失败：' + err.message);
