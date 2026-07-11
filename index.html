@@ -248,23 +248,25 @@
         }
         .print-area .print-header {
             text-align: center;
-            margin-bottom: 3mm;
+            margin-bottom: 2mm;
             flex-shrink: 0;
         }
         .print-area .print-header h1 {
             font-family: "SimHei", "黑体", "SimSun", "宋体", sans-serif;
-            font-size: 16pt;
+            font-size: 14pt;
             font-weight: 700;
-            margin: 0 0 1.5mm 0;
+            margin: 0 0 1mm 0;
             color: #000;
+            line-height: 1.3;
         }
         .print-area .print-header .info-row {
-            font-size: 10pt;
+            font-size: 9pt;
             color: #000;
             display: flex;
             justify-content: center;
-            gap: 6mm;
+            gap: 4mm;
             font-family: "SimSun", "宋体", "NSimSun", serif;
+            flex-wrap: wrap;
         }
         .print-area .print-table-wrap {
             flex: 1 1 0;
@@ -279,16 +281,14 @@
             border-collapse: collapse;
         }
         .print-area .print-table td {
-            padding: 0 12mm 0 0;
             vertical-align: middle;
             text-align: left;
-            line-height: 1.1;
+            line-height: 1.15;
             font-family: "SimSun", "宋体", "NSimSun", "Times New Roman", serif;
             font-weight: normal;
             color: #000;
-        }
-        .print-area .print-table td:last-child {
-            padding-right: 0;
+            white-space: nowrap;
+            overflow: hidden;
         }
         .print-area .print-table .q-num {
             color: #000;
@@ -298,6 +298,10 @@
         }
 
         /* ========== 打印样式（原生打印用） ========== */
+        @page {
+            size: A4;
+            margin: 0;
+        }
         @media print {
             body > :not(.print-area) {
                 display: none;
@@ -699,37 +703,62 @@
             return selected;
         }
 
-        // ==================== 布局计算（参考模板：4列固定，宋体） ====================
-        function calculateLayout(count) {
-            const cols = 4;
-            const rows = Math.ceil(count / cols);
+        // ==================== 布局计算（自适应列数/字号） ====================
+        // 判断题型是否包含"长算式"（3项运算 或 多位数）
+        function isLongExpression(typeKey) {
+            const def = TYPE_DEFS[typeKey];
+            // 连加/连减：3项运算，表达式最长
+            if (def.gen === 'genAdd3' || def.gen === 'genSub3') return true;
+            // 进位加法/退位减法：两位数运算，比普通加减法长
+            if (def.gen === 'genCarryAdd' || def.gen === 'genBorrowSub') return true;
+            // 50以内/100以内：数字大，表达式长
+            if (def.maxResult !== null && def.maxResult >= 50) return true;
+            return false;
+        }
 
-            // A4可用高度(保守)：297mm - 20mm(页边距) - 22mm(标题区) - 5mm安全 = 250mm
+        function calculateLayout(count, selectedTypes) {
+            // 判断是否有长算式类型
+            const hasLong = selectedTypes.some(k => isLongExpression(k));
+
+            // A4可用宽度：210mm - 20mm(页边距) = 190mm
+            const pageWidth = 190;
             const usableHeight = 250;
 
-            // 每行高度均匀填满页面
-            const rowHeightMM = usableHeight / rows;
+            let cols, gap, fontSize;
 
-            // 字号根据行数匹配参考模板风格（加粗黑字，偏大；已按横向列宽验算不溢出）
-            let fontSize;
-            if (rows >= 24)      fontSize = 20;
-            else if (rows >= 20) fontSize = 21;
-            else if (rows >= 17) fontSize = 22;
-            else if (rows >= 14) fontSize = 22;
-            else if (rows >= 11) fontSize = 22;
-            else if (rows >= 8)  fontSize = 22;
-            else                 fontSize = 22;
-
-            return {
-                cols: cols,
-                rows: rows,
-                fontSize: fontSize + 'pt',
-                rowHeightMM: rowHeightMM
-            };
+            if (hasLong) {
+                // 长算式：3列布局，更宽的列空间
+                cols = 3;
+                gap = 8; // 列间距 mm
+                const colWidth = (pageWidth - gap * (cols - 1)) / cols;
+                const rows = Math.ceil(count / cols);
+                // 字号：在列宽允许的前提下尽量大
+                if (rows >= 28)      fontSize = 18;
+                else if (rows >= 24) fontSize = 19;
+                else if (rows >= 18) fontSize = 20;
+                else                 fontSize = 21;
+                const rowHeightMM = usableHeight / rows;
+                return { cols, rows, fontSize: fontSize + 'pt', rowHeightMM, colWidth, gap };
+            } else {
+                // 短算式：4列布局，和原来一样
+                cols = 4;
+                gap = 6;
+                const colWidth = (pageWidth - gap * (cols - 1)) / cols;
+                const rows = Math.ceil(count / cols);
+                if (rows >= 24)      fontSize = 20;
+                else if (rows >= 20) fontSize = 21;
+                else if (rows >= 17) fontSize = 22;
+                else if (rows >= 14) fontSize = 22;
+                else if (rows >= 11) fontSize = 22;
+                else if (rows >= 8)  fontSize = 22;
+                else                 fontSize = 22;
+                const rowHeightMM = usableHeight / rows;
+                return { cols, rows, fontSize: fontSize + 'pt', rowHeightMM, colWidth, gap };
+            }
         }
 
         // ==================== PDF 生成（通过打印） ====================
-        function generateWorksheet(questions, perPage, selectedTypeNames) {
+        function generateWorksheet(questions, perPage, selectedTypes, selectedTypeNames) {
             const printArea = document.getElementById('printArea');
             printArea.innerHTML = '';
 
@@ -738,7 +767,7 @@
             for (let page = 0; page < totalPages; page++) {
                 const pageQuestions = questions.slice(page * perPage, (page + 1) * perPage);
                 const count = pageQuestions.length;
-                const layout = calculateLayout(count);
+                const layout = calculateLayout(count, selectedTypes);
                 const typeNames = selectedTypeNames.join('·');
                 const pageLabel = totalPages > 1 ? '（' + (page + 1) + '）' : '';
 
@@ -748,6 +777,7 @@
                     pageDiv.style.pageBreakAfter = 'always';
                 }
 
+                // 标题区
                 let html = '<div class="print-header">';
                 html += '<h1>' + typeNames + pageLabel + '</h1>';
                 html += '<div class="info-row">';
@@ -756,18 +786,31 @@
                 html += '<span>用时：__________</span>';
                 html += '<span>得分：__________</span>';
                 html += '</div></div>';
+
+                // 表格区
                 html += '<div class="print-table-wrap">';
                 html += '<table class="print-table" style="font-size:' + layout.fontSize + '">';
 
+                // colgroup 设定每列宽度
+                html += '<colgroup>';
+                for (let c = 0; c < layout.cols; c++) {
+                    html += '<col style="width:' + layout.colWidth.toFixed(1) + 'mm">';
+                }
+                html += '</colgroup>';
+
                 for (let r = 0; r < layout.rows; r++) {
-                    html += '<tr>';
+                    html += '<tr style="height:' + layout.rowHeightMM.toFixed(1) + 'mm">';
                     for (let c = 0; c < layout.cols; c++) {
                         // 列优先填充：序号沿每列自上而下递增（竖排）
                         const qi = c * layout.rows + r;
+                        // 列间距：最后一列不需要右边距
+                        const padStyle = c < layout.cols - 1
+                            ? 'padding:0 ' + layout.gap + 'mm 0 0'
+                            : 'padding:0';
                         if (qi < count) {
-                            html += '<td>' + (qi + 1) + '、' + pageQuestions[qi].display + '</td>';
+                            html += '<td style="' + padStyle + '">' + (qi + 1) + '、' + pageQuestions[qi].display + '</td>';
                         } else {
-                            html += '<td></td>';
+                            html += '<td style="' + padStyle + '"></td>';
                         }
                     }
                     html += '</tr>';
@@ -871,7 +914,7 @@
                 // 同步生成
                 try {
                     const questions = selectQuestions(selectedTypes, totalQuestions);
-                    generateWorksheet(questions, perPage, selectedNames);
+                    generateWorksheet(questions, perPage, selectedTypes, selectedNames);
 
                     // 原生打印：显示打印区 → 打开打印对话框 → 用户选"另存为PDF"
                     const printArea = document.getElementById('printArea');
