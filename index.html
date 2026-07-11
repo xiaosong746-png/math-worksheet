@@ -1019,22 +1019,22 @@
                     const questions = selectQuestions(selectedTypes, totalQuestions);
                     generateWorksheet(questions, perPage, selectedTypes, selectedNames);
 
-                    // 原生打印：显示打印区 → 打开打印对话框 → 用户选"另存为PDF"
+                    // 原生打印：显示打印区 → 改标题 → 打开打印对话框 → 用户选"另存为PDF"
                     const printArea = document.getElementById('printArea');
                     printArea.style.display = 'block';
                     printArea.style.position = 'static';
 
-                    // 设置文件名提示（打印对话框"另存为PDF"的默认名）
+                    // 设置文件名（日期+口算题）：改 document.title 和 <title> 双保险
                     const today = new Date();
                     const dateStr = today.getFullYear() + '-' +
                         String(today.getMonth() + 1).padStart(2, '0') + '-' +
                         String(today.getDate()).padStart(2, '0');
+                    const newTitle = dateStr + '口算题';
                     const origTitle = document.title;
-                    document.title = dateStr + '口算题';
-                    // Safari 打印 PDF 用 <title> 标签内容，需同步修改
                     const titleEl = document.querySelector('title');
                     const origTitleText = titleEl.textContent;
-                    titleEl.textContent = dateStr + '口算题';
+                    document.title = newTitle;
+                    titleEl.textContent = newTitle;
 
                     // 打印完成后恢复界面和标题
                     const afterPrint = function() {
@@ -1047,13 +1047,17 @@
                         window.removeEventListener('afterprint', afterPrint);
                     };
                     window.addEventListener('afterprint', afterPrint);
-                    // 备用：部分浏览器不支持 afterprint，延迟恢复
+
+                    // 延迟打印：给浏览器一个渲染帧处理标题变更（Android Chrome 需要）
                     setTimeout(function() {
-                        if (printArea.style.display !== 'none') {
-                            afterPrint();
-                        }
-                    }, 3000);
-                    window.print();
+                        window.print();
+                        // 备用恢复：部分浏览器不支持 afterprint
+                        setTimeout(function() {
+                            if (printArea.style.display !== 'none') {
+                                afterPrint();
+                            }
+                        }, 3000);
+                    }, 150);
 
                 } catch (err) {
                     showError('生成失败：' + err.message);
