@@ -703,58 +703,65 @@
             return selected;
         }
 
-        // ==================== 布局计算（自适应列数/字号） ====================
-        // 判断题型是否包含"长算式"（3项运算 或 多位数）
-        function isLongExpression(typeKey) {
-            const def = TYPE_DEFS[typeKey];
-            // 连加/连减：3项运算，表达式最长
-            if (def.gen === 'genAdd3' || def.gen === 'genSub3') return true;
-            // 进位加法/退位减法：两位数运算，比普通加减法长
-            if (def.gen === 'genCarryAdd' || def.gen === 'genBorrowSub') return true;
-            // 50以内/100以内：数字大，表达式长
-            if (def.maxResult !== null && def.maxResult >= 50) return true;
-            return false;
+        // ==================== 布局计算（4列固定，字号自适应算式长度） ====================
+        // 估算题型最长算式字符数（含序号"100、"）
+        function getMaxExprChars(selectedTypes) {
+            let maxChars = 5; // 默认 "9+8=" = 5个半角字符
+            for (const key of selectedTypes) {
+                const def = TYPE_DEFS[key];
+                let ec;
+                if (def.gen === 'genAdd3' || def.gen === 'genSub3') {
+                    ec = 7; // "20+0+0=" = 7 chars (20以内连加/连减，a+b+c≤20)
+                } else if (def.maxResult !== null && def.maxResult >= 100) {
+                    ec = 8; // "100+99=" = 8 chars
+                } else if (def.maxResult !== null && def.maxResult >= 50) {
+                    ec = 7; // "50+49=" = 7 chars
+                } else if (def.gen === 'genCarryAdd' || def.gen === 'genBorrowSub') {
+                    ec = 6; // "19+18=" = 6 chars
+                } else {
+                    ec = 5; // "9+8=" = 5 chars
+                }
+                if (ec > maxChars) maxChars = ec;
+            }
+            return maxChars;
         }
 
         function calculateLayout(count, selectedTypes) {
-            // 判断是否有长算式类型
-            const hasLong = selectedTypes.some(k => isLongExpression(k));
+            const cols = 4;
+            const rows = Math.ceil(count / cols);
 
-            // A4可用宽度：210mm - 20mm(页边距) = 190mm
+            // 估算最宽算式需要的列宽（参考20pt：半角字符≈4.2mm，全角≈7mm）
+            const maxExprChars = getMaxExprChars(selectedTypes);
+            // "100、" = 3半角(12.6mm) + 顿号全角(7mm) ≈ 19.6mm
+            // 算式部分 = maxExprChars × 4.2mm
+            const cellWidthAt20pt = 19.6 + maxExprChars * 4.2;
+
+            // A4可用宽度：210mm - 20mm(页边距) = 190mm，列间距5mm
             const pageWidth = 190;
-            const usableHeight = 250;
+            const gap = 5;
+            const colWidth = (pageWidth - gap * (cols - 1)) / cols; // 43.75mm
 
-            let cols, gap, fontSize;
+            // 按列宽反推最大字号
+            const fontByWidth = Math.floor(20 * colWidth / cellWidthAt20pt);
 
-            if (hasLong) {
-                // 长算式：3列布局，更宽的列空间
-                cols = 3;
-                gap = 8; // 列间距 mm
-                const colWidth = (pageWidth - gap * (cols - 1)) / cols;
-                const rows = Math.ceil(count / cols);
-                // 字号：在列宽允许的前提下尽量大
-                if (rows >= 28)      fontSize = 18;
-                else if (rows >= 24) fontSize = 19;
-                else if (rows >= 18) fontSize = 20;
-                else                 fontSize = 21;
-                const rowHeightMM = usableHeight / rows;
-                return { cols, rows, fontSize: fontSize + 'pt', rowHeightMM, colWidth, gap };
-            } else {
-                // 短算式：4列布局，和原来一样
-                cols = 4;
-                gap = 6;
-                const colWidth = (pageWidth - gap * (cols - 1)) / cols;
-                const rows = Math.ceil(count / cols);
-                if (rows >= 24)      fontSize = 20;
-                else if (rows >= 20) fontSize = 21;
-                else if (rows >= 17) fontSize = 22;
-                else if (rows >= 14) fontSize = 22;
-                else if (rows >= 11) fontSize = 22;
-                else if (rows >= 8)  fontSize = 22;
-                else                 fontSize = 22;
-                const rowHeightMM = usableHeight / rows;
-                return { cols, rows, fontSize: fontSize + 'pt', rowHeightMM, colWidth, gap };
-            }
+            // A4可用高度：297mm - 16mm(padding) - 12mm(标题区) ≈ 269mm
+            const usableHeight = 268;
+            const rowHeightMM = usableHeight / rows;
+
+            // 按行高反推最大字号（line-height 1.15）
+            const fontByHeight = Math.floor(rowHeightMM / 1.15 / 0.3528);
+
+            // 取两者较小值，限制范围14-22pt
+            const fontSize = Math.min(22, Math.max(14, Math.min(fontByWidth, fontByHeight)));
+
+            return {
+                cols: cols,
+                rows: rows,
+                fontSize: fontSize + 'pt',
+                rowHeightMM: rowHeightMM,
+                colWidth: colWidth,
+                gap: gap
+            };
         }
 
         // ==================== PDF 生成（通过打印） ====================
