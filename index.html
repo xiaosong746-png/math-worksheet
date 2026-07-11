@@ -463,6 +463,22 @@
 
         // 题目对象格式: { display: '3 + 5 = ___', key: '3+5' }
 
+        // 从 key 提取计算结果（用于分层抽样）
+        function getResult(key) {
+            const nums = key.split(/[+\-×÷]/).map(Number);
+            const ops = key.match(/[+\-×÷]/g) || [];
+            let result = nums[0];
+            for (let i = 0; i < ops.length; i++) {
+                switch (ops[i]) {
+                    case '+': result += nums[i + 1]; break;
+                    case '-': result -= nums[i + 1]; break;
+                    case '×': result *= nums[i + 1]; break;
+                    case '÷': result = Math.floor(result / nums[i + 1]); break;
+                }
+            }
+            return result;
+        }
+
         function generateAllQuestions(typeKey) {
             const def = TYPE_DEFS[typeKey];
             const questions = [];
@@ -649,7 +665,7 @@
             return pools[typeKey].filter(q => !usedQuestions[typeKey].has(q.key));
         }
 
-        // ==================== 题目抽取（均匀分配 + 自动循环重置） ====================
+        // ==================== 题目抽取（分层抽样：按结果值均匀分布） ====================
         function selectQuestions(selectedTypes, totalCount) {
             const perType = Math.floor(totalCount / selectedTypes.length);
             const remainder = totalCount % selectedTypes.length;
@@ -667,7 +683,7 @@
                     let available = getAvailablePool(key);
 
                     // 不够时重置该题型题库
-                    if (available.length === 0 || available.length < (need - typePicked.length)) {
+                    if (available.length < (need - typePicked.length)) {
                         resetUsedQuestions([key]);
                         for (let k = pools[key].length - 1; k > 0; k--) {
                             const j = Math.floor(Math.random() * (k + 1));
@@ -676,14 +692,94 @@
                         available = getAvailablePool(key);
                     }
 
-                    // 随机抽取
-                    for (let k = available.length - 1; k > 0; k--) {
-                        const j = Math.floor(Math.random() * (k + 1));
-                        [available[k], available[j]] = [available[j], available[k]];
+                    const stillNeed = need - typePicked.length;
+
+                    // === 分层抽样：按结果值分桶，每桶均匀抽取 ===
+                    // 1. 按结果值分组
+                    const byResult = {};
+                    for (const q of available) {
+                        const r = getResult(q.key);
+                        if (!byResult[r]) byResult[r] = [];
+                        byResult[r].push(q);
                     }
 
-                    const stillNeed = need - typePicked.length;
-                    const batch = available.slice(0, Math.min(stillNeed, available.length));
+                    const results = Object.keys(byResult).map(Number).sort((a, b) => a - b);
+                    const minR = results[0];
+                    const maxR = results[results.length - 1];
+                    const resultRange = maxR - minR;
+
+                    // 2. 确定桶数（至少5个桶，最多不超过结果值种类数）
+                    const numBuckets = Math.min(results.length, Math.max(5, Math.ceil(stillNeed / 5)));
+                    const bucketWidth = Math.max(1, Math.ceil(resultRange / numBuckets));
+
+                    // 3. 将题目分配到桶
+                    const buckets = [];
+                    for (let b = 0; b < numBuckets; b++) {
+                        buckets.push([]);
+                    }
+                    for (const q of available) {
+                        const r = getResult(q.key);
+                        const bidx = Math.min(numBuckets - 1, Math.floor((r - minR) / bucketWidth));
+                        buckets[bidx].push(q);
+                    }
+
+                    // 4. 每个桶内随机洗牌
+                    for (const bucket of buckets) {
+                        for (let k = bucket.length - 1; k > 0; k--) {
+                            const j = Math.floor(Math.random() * (k + 1));
+                            [bucket[k], bucket[j]] = [bucket[j], bucket[k]];
+                        }
+                    }
+
+                    // 5. 轮询从各桶抽取（确保每桶都有代表）
+                    const batch = [];
+                    const bucketIdx = Array.from({ length: numBuckets }, (_, i) => i);
+                    let round = 0;
+                    while (batch.length < Math.min(stillNeed, available.length)) {
+                        let pickedThisRound = false;
+                        // 每轮随机打乱桶的顺序，避免前面的桶总是优先
+                        for (let bi = bucketIdx.length - 1; bi > 0; bi--) {
+                            const bj = Math.floor(Math.random() * (bi + 1));
+                            [bucketIdx[bi], bucketIdx[bj]] = [bucketIdx[bj], bucketIdx[bi]];
+                        }
+                        for (const bi of bucketIdx) {
+                            if (batch.length >= Math.min(stillNeed, available.length)) break;
+                            if (buckets[bi].length > round) {
+                                const q = buckets[bi][round];
+                                // 避免同一页出现近重复题（如 3+5 和 5+3）
+                                const alreadyPicked = batch.concat(typePicked);
+                                const isNearDup = alreadyPicked.some(picked => {
+                                    if (picked.typeKey !== key) return false;
+                                    const r1 = getResult(picked.key);
+                                    const r2 = getResult(q.key);
+                                    if (r1 !== r2) return false;
+                                    // 同结果、同操作数集合 = 近重复
+                                    const nums1 = picked.key.split(/[+\-×÷]/).map(Number).sort().join(',');
+                                    const nums2 = q.key.split(/[+\-×÷]/).map(Number).sort().join(',');
+                                    return nums1 === nums2;
+                                });
+                                if (!isNearDup) {
+                                    batch.push(q);
+                                    pickedThisRound = true;
+                                }
+                            }
+                        }
+                        round++;
+                        if (!pickedThisRound) break; // 所有桶都耗尽
+                    }
+
+                    // 6. 如果分层抽样不够（极端情况），随机补充
+                    if (batch.length < Math.min(stillNeed, available.length)) {
+                        const remaining = available.filter(q => !batch.some(b => b.key === q.key));
+                        for (let k = remaining.length - 1; k > 0; k--) {
+                            const j = Math.floor(Math.random() * (k + 1));
+                            [remaining[k], remaining[j]] = [remaining[j], remaining[k]];
+                        }
+                        while (batch.length < Math.min(stillNeed, available.length) && remaining.length > 0) {
+                            batch.push(remaining.pop());
+                        }
+                    }
+
                     for (const q of batch) {
                         usedQuestions[key].add(q.key);
                         typePicked.push({ ...q, typeKey: key });
@@ -693,7 +789,7 @@
                 selected.push(...typePicked);
             }
 
-            // 最终打乱
+            // 最终打乱（跨题型混合）
             for (let i = selected.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [selected[i], selected[j]] = [selected[j], selected[i]];
